@@ -1,6 +1,6 @@
 {
   "name": "gladys-mail-and-packages",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Gladys Assistant integration: packages and mail detected in your mailbox (UPS, FedEx, USPS, Amazon, DHL, Colissimo...).",
   "type": "module",
