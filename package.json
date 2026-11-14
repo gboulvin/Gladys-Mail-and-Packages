@@ -1,0 +1,36 @@
+{
+  "name": "gladys-mail-and-packages",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gladys Assistant integration: packages and mail detected in your mailbox (UPS, FedEx, USPS, Amazon, DHL, Colissimo...).",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test",
+    "manifest": "node scripts/build-manifest.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@gladysassistant/integration-sdk": "^0.16.0",
+    "imapflow": "^2.11.0",
+    "mailparser": "^3.14.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gboulvin/Gladys-Mail-and-Packages.git"
+  }
+}

@@ -1,0 +1,717 @@
+// -----------------------------------------------------------------------------
+// Source of gladys-assistant-integration.json.
+//
+// The manifest lists every carrier three times (configuration, scene filters,
+// widget settings) in four languages: writing it by hand would drift from
+// src/carriers/. It is generated instead:
+//
+//   npm run manifest          # rewrite gladys-assistant-integration.json
+//
+// `version` and `docker_image` are read from the current manifest and kept as
+// is: they belong to the Release workflow. test/manifest.test.js fails when
+// the committed manifest is not the one this script produces.
+// -----------------------------------------------------------------------------
+
+import { CARRIERS } from '../src/carriers/index.js';
+import { DEFAULT_CONFIG } from '../src/config.js';
+import {
+  ALL_CARRIERS,
+  COUNTER,
+  MAIL_TRIGGER,
+  STATUS,
+  TRIGGER_BY_STATUS,
+} from '../src/constants.js';
+
+const REPO = 'https://github.com/gboulvin/Gladys-Mail-and-Packages';
+const RAW = 'https://raw.githubusercontent.com/gboulvin/Gladys-Mail-and-Packages/main';
+
+// Brand names read the same in every language, except the catch-all entry.
+const carrierLabel = (carrier) =>
+  carrier.key === 'other'
+    ? {
+        en: 'Other senders (custom list)',
+        fr: 'Autres expéditeurs (liste personnalisée)',
+        de: 'Andere Absender (eigene Liste)',
+        es: 'Otros remitentes (lista personalizada)',
+      }
+    : { en: carrier.name };
+
+const carrierOptions = () =>
+  CARRIERS.map((carrier) => ({ value: carrier.key, label: carrierLabel(carrier) }));
+
+const ALL_OPTION = {
+  value: ALL_CARRIERS,
+  label: {
+    en: 'All carriers',
+    fr: 'Tous les transporteurs',
+    de: 'Alle Versanddienste',
+    es: 'Todos los transportistas',
+  },
+};
+
+const carrierSelect = (extra = {}) => ({
+  key: 'carrier',
+  type: 'select',
+  label: { en: 'Carrier', fr: 'Transporteur', de: 'Versanddienst', es: 'Transportista' },
+  options: [ALL_OPTION, ...carrierOptions()],
+  default: ALL_CARRIERS,
+  ...extra,
+});
+
+// --- Configuration ----------------------------------------------------------------
+
+const configSchema = [
+  {
+    key: 'intro',
+    type: 'section',
+    label: { en: 'Your mailbox', fr: 'Votre boîte mail', de: 'Ihr Postfach', es: 'Tu buzón' },
+    description: {
+      en: 'The integration reads the shipping notifications of your mailbox over IMAP, read-only: nothing is moved, flagged or deleted. Gmail, iCloud, Yahoo and Outlook require an app password, not your usual password. A dedicated mailbox, to which you forward your shipping emails, works too.',
+      fr: "L'intégration lit les notifications d'expédition de votre boîte mail en IMAP, en lecture seule : rien n'est déplacé, marqué ni supprimé. Gmail, iCloud, Yahoo et Outlook exigent un mot de passe d'application, pas votre mot de passe habituel. Une boîte dédiée, vers laquelle vous transférez vos e-mails d'expédition, fonctionne aussi.",
+      de: 'Die Integration liest die Versandbenachrichtigungen Ihres Postfachs per IMAP, nur lesend: nichts wird verschoben, markiert oder gelöscht. Gmail, iCloud, Yahoo und Outlook verlangen ein App-Passwort, nicht Ihr übliches Passwort. Ein eigenes Postfach, an das Sie Ihre Versand-E-Mails weiterleiten, funktioniert auch.',
+      es: 'La integración lee las notificaciones de envío de tu buzón por IMAP, en solo lectura: no mueve, marca ni borra nada. Gmail, iCloud, Yahoo y Outlook exigen una contraseña de aplicación, no tu contraseña habitual. También sirve un buzón dedicado al que reenvíes tus correos de envío.',
+    },
+    links: [
+      {
+        url: 'https://support.google.com/accounts/answer/185833',
+        label: {
+          en: 'Gmail app passwords',
+          fr: "Mots de passe d'application Gmail",
+          de: 'Gmail-App-Passwörter',
+          es: 'Contraseñas de aplicación de Gmail',
+        },
+      },
+      {
+        url: 'https://support.apple.com/en-us/102654',
+        label: {
+          en: 'iCloud app passwords',
+          fr: "Mots de passe d'application iCloud",
+          de: 'iCloud-App-Passwörter',
+          es: 'Contraseñas de aplicación de iCloud',
+        },
+      },
+      {
+        url: `${REPO}/blob/main/docs/en.md`,
+        label: {
+          en: 'Server settings by provider',
+          fr: 'Paramètres par fournisseur',
+          de: 'Servereinstellungen je Anbieter',
+          es: 'Ajustes por proveedor',
+        },
+      },
+    ],
+  },
+  {
+    key: 'imap_host',
+    type: 'string',
+    label: { en: 'IMAP server', fr: 'Serveur IMAP', de: 'IMAP-Server', es: 'Servidor IMAP' },
+    placeholder: {
+      en: 'e.g. imap.gmail.com',
+      fr: 'ex. imap.gmail.com',
+      de: 'z. B. imap.gmail.com',
+      es: 'p. ej. imap.gmail.com',
+    },
+    required: true,
+  },
+  {
+    key: 'imap_port',
+    type: 'number',
+    label: { en: 'Port', fr: 'Port', de: 'Port', es: 'Puerto' },
+    description: {
+      en: '993 with TLS, 143 with STARTTLS.',
+      fr: '993 avec TLS, 143 avec STARTTLS.',
+      de: '993 mit TLS, 143 mit STARTTLS.',
+      es: '993 con TLS, 143 con STARTTLS.',
+    },
+    required: true,
+    default: DEFAULT_CONFIG.imap_port,
+    min: 1,
+    max: 65535,
+  },
+  {
+    key: 'imap_security',
+    type: 'select',
+    label: { en: 'Security', fr: 'Sécurité', de: 'Sicherheit', es: 'Seguridad' },
+    required: true,
+    default: DEFAULT_CONFIG.imap_security,
+    options: [
+      {
+        value: 'tls',
+        label: {
+          en: 'TLS (recommended)',
+          fr: 'TLS (recommandé)',
+          de: 'TLS (empfohlen)',
+          es: 'TLS (recomendado)',
+        },
+      },
+      { value: 'starttls', label: { en: 'STARTTLS' } },
+    ],
+  },
+  {
+    key: 'imap_user',
+    type: 'string',
+    label: { en: 'User name', fr: 'Identifiant', de: 'Benutzername', es: 'Usuario' },
+    placeholder: {
+      en: 'e.g. me@gmail.com',
+      fr: 'ex. moi@gmail.com',
+      de: 'z. B. ich@gmail.com',
+      es: 'p. ej. yo@gmail.com',
+    },
+    required: true,
+  },
+  {
+    key: 'imap_password',
+    type: 'secret',
+    label: {
+      en: 'Password (or app password)',
+      fr: "Mot de passe (ou mot de passe d'application)",
+      de: 'Passwort (oder App-Passwort)',
+      es: 'Contraseña (o contraseña de aplicación)',
+    },
+    required: true,
+  },
+  {
+    key: 'imap_folder',
+    type: 'string',
+    label: { en: 'Folders', fr: 'Dossiers', de: 'Ordner', es: 'Carpetas' },
+    description: {
+      en: 'Folders to scan, separated by commas (e.g. INBOX, Shopping). Gmail labels are folders.',
+      fr: 'Dossiers à analyser, séparés par des virgules (ex. INBOX, Achats). Les libellés Gmail sont des dossiers.',
+      de: 'Zu prüfende Ordner, durch Kommas getrennt (z. B. INBOX, Einkäufe). Gmail-Labels sind Ordner.',
+      es: 'Carpetas que analizar, separadas por comas (p. ej. INBOX, Compras). Las etiquetas de Gmail son carpetas.',
+    },
+    required: true,
+    default: DEFAULT_CONFIG.imap_folder,
+  },
+  {
+    key: 'allow_self_signed',
+    type: 'boolean',
+    label: {
+      en: 'Accept a self-signed certificate',
+      fr: 'Accepter un certificat auto-signé',
+      de: 'Selbstsigniertes Zertifikat akzeptieren',
+      es: 'Aceptar un certificado autofirmado',
+    },
+    description: {
+      en: 'Only for a mail server on your own network. Leave off for an online provider.',
+      fr: 'Uniquement pour un serveur de messagerie sur votre réseau. Laissez désactivé pour un fournisseur en ligne.',
+      de: 'Nur für einen Mailserver im eigenen Netz. Für einen Online-Anbieter ausgeschaltet lassen.',
+      es: 'Solo para un servidor de correo en tu propia red. Déjalo desactivado para un proveedor en línea.',
+    },
+    required: false,
+    default: DEFAULT_CONFIG.allow_self_signed,
+  },
+  {
+    key: 'carriers_section',
+    type: 'section',
+    label: { en: 'Carriers', fr: 'Transporteurs', de: 'Versanddienste', es: 'Transportistas' },
+    description: {
+      en: 'One device per checked carrier shows up in the Discovery tab, next to the "Mail and Packages" summary device.',
+      fr: "Un appareil par transporteur coché apparaît dans l'onglet Découverte, à côté de l'appareil récapitulatif « Courrier et colis ».",
+      de: 'Für jeden markierten Versanddienst erscheint ein Gerät im Tab „Erkennung“, neben dem Übersichtsgerät „Post und Pakete“.',
+      es: 'Aparece un dispositivo por cada transportista marcado en la pestaña Descubrimiento, junto al dispositivo resumen «Correo y paquetes».',
+    },
+  },
+  {
+    key: 'carriers',
+    type: 'multi_select',
+    label: {
+      en: 'Carriers to detect',
+      fr: 'Transporteurs à détecter',
+      de: 'Zu erkennende Versanddienste',
+      es: 'Transportistas que detectar',
+    },
+    required: false,
+    default: DEFAULT_CONFIG.carriers,
+    options: carrierOptions(),
+  },
+  {
+    key: 'custom_senders',
+    type: 'string',
+    label: {
+      en: 'Other senders',
+      fr: 'Autres expéditeurs',
+      de: 'Andere Absender',
+      es: 'Otros remitentes',
+    },
+    description: {
+      en: 'Shops or carriers missing from the list: addresses or domains, separated by commas. Counted under "Other senders".',
+      fr: 'Boutiques ou transporteurs absents de la liste : adresses ou domaines, séparés par des virgules. Comptés dans « Autres expéditeurs ».',
+      de: 'Shops oder Versanddienste, die in der Liste fehlen: Adressen oder Domains, durch Kommas getrennt. Gezählt unter „Andere Absender“.',
+      es: 'Tiendas o transportistas que faltan en la lista: direcciones o dominios, separados por comas. Se cuentan en «Otros remitentes».',
+    },
+    placeholder: {
+      en: 'e.g. shop.example.com, orders@example.org',
+      fr: 'ex. boutique.example.com, commandes@example.org',
+      de: 'z. B. shop.example.com, bestellung@example.org',
+      es: 'p. ej. tienda.example.com, pedidos@example.org',
+    },
+    required: false,
+  },
+  {
+    key: 'advanced_section',
+    type: 'section',
+    label: { en: 'Advanced', fr: 'Avancé', de: 'Erweitert', es: 'Avanzado' },
+  },
+  {
+    key: 'scan_interval',
+    type: 'number',
+    label: {
+      en: 'Scan interval (minutes)',
+      fr: "Intervalle d'analyse (minutes)",
+      de: 'Prüfintervall (Minuten)',
+      es: 'Intervalo de análisis (minutos)',
+    },
+    required: false,
+    default: DEFAULT_CONFIG.scan_interval,
+    min: 1,
+    max: 120,
+  },
+  {
+    key: 'lookback_days',
+    type: 'number',
+    label: {
+      en: 'Days of emails to read',
+      fr: "Jours d'e-mails à lire",
+      de: 'Tage an E-Mails lesen',
+      es: 'Días de correos que leer',
+    },
+    description: {
+      en: 'A parcel stays "in transit" as long as its emails are younger than this.',
+      fr: 'Un colis reste « en transit » tant que ses e-mails ont moins de ce nombre de jours.',
+      de: 'Ein Paket bleibt „unterwegs“, solange seine E-Mails jünger sind.',
+      es: 'Un paquete sigue «en tránsito» mientras sus correos sean más recientes que esto.',
+    },
+    required: false,
+    default: DEFAULT_CONFIG.lookback_days,
+    min: 1,
+    max: 30,
+  },
+  {
+    key: 'language',
+    type: 'select',
+    label: {
+      en: 'Language of the device names',
+      fr: 'Langue des noms d’appareils',
+      de: 'Sprache der Gerätenamen',
+      es: 'Idioma de los nombres de dispositivos',
+    },
+    required: false,
+    default: DEFAULT_CONFIG.language,
+    options: [
+      { value: 'en', label: { en: 'English' } },
+      { value: 'fr', label: { en: 'Français' } },
+      { value: 'de', label: { en: 'Deutsch' } },
+      { value: 'es', label: { en: 'Español' } },
+    ],
+  },
+  {
+    key: 'timezone',
+    type: 'string',
+    label: { en: 'Time zone', fr: 'Fuseau horaire', de: 'Zeitzone', es: 'Zona horaria' },
+    description: {
+      en: 'Decides when "today" starts. Empty: the time zone of the Gladys server.',
+      fr: "Détermine quand commence « aujourd'hui ». Vide : le fuseau du serveur Gladys.",
+      de: 'Legt fest, wann „heute“ beginnt. Leer: die Zeitzone des Gladys-Servers.',
+      es: 'Decide cuándo empieza «hoy». Vacío: la zona horaria del servidor Gladys.',
+    },
+    placeholder: {
+      en: 'e.g. Europe/Paris',
+      fr: 'ex. Europe/Paris',
+      de: 'z. B. Europe/Berlin',
+      es: 'p. ej. Europe/Madrid',
+    },
+    required: false,
+  },
+];
+
+// --- Manifest actions ---------------------------------------------------------------
+
+const actions = [
+  {
+    key: 'test_connection',
+    label: {
+      en: 'Test the connection',
+      fr: 'Tester la connexion',
+      de: 'Verbindung testen',
+      es: 'Probar la conexión',
+    },
+    timeout_seconds: 60,
+  },
+  {
+    key: 'scan_now',
+    label: {
+      en: 'Scan the mailbox now',
+      fr: 'Analyser la boîte maintenant',
+      de: 'Postfach jetzt prüfen',
+      es: 'Analizar el buzón ahora',
+    },
+    timeout_seconds: 120,
+  },
+];
+
+// --- Scene triggers -------------------------------------------------------------------
+
+const PACKAGE_VARIABLES = [
+  {
+    key: 'carrier',
+    type: 'string',
+    label: {
+      en: 'Carrier key',
+      fr: 'Clé du transporteur',
+      de: 'Schlüssel des Versanddienstes',
+      es: 'Clave del transportista',
+    },
+  },
+  {
+    key: 'carrier_name',
+    type: 'string',
+    label: { en: 'Carrier', fr: 'Transporteur', de: 'Versanddienst', es: 'Transportista' },
+  },
+  {
+    key: 'tracking',
+    type: 'string',
+    label: {
+      en: 'Tracking number',
+      fr: 'Numéro de suivi',
+      de: 'Sendungsnummer',
+      es: 'Número de seguimiento',
+    },
+  },
+  {
+    key: 'tracking_url',
+    type: 'string',
+    label: {
+      en: 'Tracking link',
+      fr: 'Lien de suivi',
+      de: 'Verfolgungslink',
+      es: 'Enlace de seguimiento',
+    },
+  },
+  {
+    key: 'pickup_code',
+    type: 'string',
+    label: { en: 'Pickup code', fr: 'Code de retrait', de: 'Abholcode', es: 'Código de recogida' },
+  },
+  {
+    key: 'subject',
+    type: 'string',
+    label: {
+      en: 'Email subject',
+      fr: "Objet de l'e-mail",
+      de: 'E-Mail-Betreff',
+      es: 'Asunto del correo',
+    },
+  },
+];
+
+const TRIGGER_TEXTS = {
+  [STATUS.IN_TRANSIT]: {
+    label: {
+      en: 'Package shipped',
+      fr: 'Colis expédié',
+      de: 'Paket versandt',
+      es: 'Paquete enviado',
+    },
+    description: {
+      en: 'A shipping confirmation arrived in the mailbox.',
+      fr: "Une confirmation d'expédition est arrivée dans la boîte mail.",
+      de: 'Eine Versandbestätigung ist im Postfach eingegangen.',
+      es: 'Ha llegado una confirmación de envío al buzón.',
+    },
+  },
+  [STATUS.OUT_FOR_DELIVERY]: {
+    label: {
+      en: 'Package out for delivery',
+      fr: 'Colis en cours de livraison',
+      de: 'Paket in Zustellung',
+      es: 'Paquete en reparto',
+    },
+    description: {
+      en: 'A carrier announced a delivery for today.',
+      fr: "Un transporteur annonce une livraison aujourd'hui.",
+      de: 'Ein Versanddienst kündigt eine Zustellung für heute an.',
+      es: 'Un transportista anuncia una entrega para hoy.',
+    },
+  },
+  [STATUS.PICKUP]: {
+    label: {
+      en: 'Package ready for pickup',
+      fr: 'Colis à retirer',
+      de: 'Paket abholbereit',
+      es: 'Paquete listo para recoger',
+    },
+    description: {
+      en: 'A parcel waits in a locker, a pickup point or a post office.',
+      fr: 'Un colis attend en consigne, en point relais ou au bureau de poste.',
+      de: 'Ein Paket wartet in einer Packstation, einem Paketshop oder einer Filiale.',
+      es: 'Un paquete espera en un casillero, un punto de recogida o una oficina de correos.',
+    },
+  },
+  [STATUS.DELIVERED]: {
+    label: {
+      en: 'Package delivered',
+      fr: 'Colis livré',
+      de: 'Paket zugestellt',
+      es: 'Paquete entregado',
+    },
+    description: {
+      en: 'A carrier confirmed a delivery.',
+      fr: 'Un transporteur confirme une livraison.',
+      de: 'Ein Versanddienst bestätigt eine Zustellung.',
+      es: 'Un transportista confirma una entrega.',
+    },
+  },
+  [STATUS.EXCEPTION]: {
+    label: {
+      en: 'Delivery problem',
+      fr: 'Incident de livraison',
+      de: 'Zustellproblem',
+      es: 'Incidencia de entrega',
+    },
+    description: {
+      en: 'Delay, missed delivery attempt or return to sender.',
+      fr: 'Retard, tentative de livraison manquée ou retour à l’expéditeur.',
+      de: 'Verspätung, verpasster Zustellversuch oder Rücksendung.',
+      es: 'Retraso, intento de entrega fallido o devolución al remitente.',
+    },
+  },
+};
+
+const sceneTriggers = [
+  ...Object.entries(TRIGGER_BY_STATUS).map(([status, key]) => ({
+    key,
+    ...TRIGGER_TEXTS[status],
+    fields: [
+      {
+        key: 'carrier',
+        type: 'multi_select',
+        label: {
+          en: 'Carriers (all when empty)',
+          fr: 'Transporteurs (tous si vide)',
+          de: 'Versanddienste (alle wenn leer)',
+          es: 'Transportistas (todos si vacío)',
+        },
+        options: carrierOptions(),
+      },
+    ],
+    variables: PACKAGE_VARIABLES,
+  })),
+  {
+    key: MAIL_TRIGGER,
+    label: {
+      en: 'Letter mail expected today',
+      fr: "Courrier attendu aujourd'hui",
+      de: 'Heute Briefpost erwartet',
+      es: 'Correo postal previsto hoy',
+    },
+    description: {
+      en: 'USPS Informed Delivery announced the letters of the day.',
+      fr: 'USPS Informed Delivery annonce le courrier du jour.',
+      de: 'USPS Informed Delivery kündigt die Post des Tages an.',
+      es: 'USPS Informed Delivery anuncia el correo del día.',
+    },
+    variables: [
+      {
+        key: 'count',
+        type: 'number',
+        label: {
+          en: 'Number of letters',
+          fr: 'Nombre de courriers',
+          de: 'Anzahl der Briefe',
+          es: 'Número de cartas',
+        },
+      },
+    ],
+  },
+];
+
+// --- Scene actions --------------------------------------------------------------------
+
+const OUTPUTS = [
+  {
+    key: COUNTER.ARRIVING_TODAY,
+    type: 'number',
+    label: {
+      en: 'Arriving today',
+      fr: "Arrivent aujourd'hui",
+      de: 'Kommen heute',
+      es: 'Llegan hoy',
+    },
+  },
+  {
+    key: COUNTER.IN_TRANSIT,
+    type: 'number',
+    label: { en: 'In transit', fr: 'En transit', de: 'Unterwegs', es: 'En tránsito' },
+  },
+  {
+    key: COUNTER.PICKUP,
+    type: 'number',
+    label: { en: 'To pick up', fr: 'À retirer', de: 'Abholbereit', es: 'Por recoger' },
+  },
+  {
+    key: COUNTER.DELIVERED,
+    type: 'number',
+    label: {
+      en: 'Delivered today',
+      fr: "Livrés aujourd'hui",
+      de: 'Heute zugestellt',
+      es: 'Entregados hoy',
+    },
+  },
+  {
+    key: COUNTER.EXCEPTION,
+    type: 'number',
+    label: {
+      en: 'Delivery problems',
+      fr: 'Incidents de livraison',
+      de: 'Zustellprobleme',
+      es: 'Incidencias',
+    },
+  },
+  {
+    key: 'mail',
+    type: 'number',
+    label: {
+      en: 'Letters expected today',
+      fr: "Courriers attendus aujourd'hui",
+      de: 'Heute erwartete Briefe',
+      es: 'Cartas previstas hoy',
+    },
+  },
+  {
+    key: 'expected_today',
+    type: 'boolean',
+    label: {
+      en: 'Something to receive today',
+      fr: "Quelque chose à recevoir aujourd'hui",
+      de: 'Heute etwas zu empfangen',
+      es: 'Algo que recibir hoy',
+    },
+    description: {
+      en: 'A parcel arrives today or waits to be picked up.',
+      fr: "Un colis arrive aujourd'hui ou attend d'être retiré.",
+      de: 'Ein Paket kommt heute oder wartet auf Abholung.',
+      es: 'Un paquete llega hoy o espera a ser recogido.',
+    },
+  },
+  {
+    key: 'summary',
+    type: 'string',
+    label: {
+      en: 'Summary sentence',
+      fr: 'Phrase de résumé',
+      de: 'Zusammenfassung',
+      es: 'Frase de resumen',
+    },
+    description: {
+      en: 'Ready to send in a message, in the language of the configuration.',
+      fr: 'Prête à envoyer dans un message, dans la langue de la configuration.',
+      de: 'Fertig zum Versenden in einer Nachricht, in der Sprache der Konfiguration.',
+      es: 'Lista para enviar en un mensaje, en el idioma de la configuración.',
+    },
+  },
+];
+
+const sceneActions = [
+  {
+    key: 'scan_mailbox',
+    label: {
+      en: 'Scan the mailbox for packages',
+      fr: 'Analyser la boîte mail (colis)',
+      de: 'Postfach nach Paketen prüfen',
+      es: 'Analizar el buzón (paquetes)',
+    },
+    description: {
+      en: 'Reads the mailbox now, then returns the counters.',
+      fr: 'Lit la boîte mail maintenant, puis renvoie les compteurs.',
+      de: 'Liest das Postfach jetzt und gibt die Zähler zurück.',
+      es: 'Lee el buzón ahora y devuelve los contadores.',
+    },
+    timeout_seconds: 120,
+    fields: [carrierSelect()],
+    outputs: OUTPUTS,
+  },
+  {
+    key: 'get_package_counts',
+    label: {
+      en: 'Get the package counters',
+      fr: 'Obtenir les compteurs de colis',
+      de: 'Paketzähler abrufen',
+      es: 'Obtener los contadores de paquetes',
+    },
+    description: {
+      en: 'Instant: the counters of the last scan.',
+      fr: 'Immédiat : les compteurs de la dernière analyse.',
+      de: 'Sofort: die Zähler der letzten Prüfung.',
+      es: 'Inmediato: los contadores del último análisis.',
+    },
+    timeout_seconds: 10,
+    fields: [carrierSelect()],
+    outputs: OUTPUTS,
+  },
+];
+
+// --- Widgets -----------------------------------------------------------------------------
+
+const widgets = [
+  {
+    key: 'packages_overview',
+    label: { en: 'Packages today', fr: 'Colis du jour', de: 'Pakete heute', es: 'Paquetes de hoy' },
+    description: {
+      en: 'Parcels arriving, in transit, to pick up, delivered, and the mailbox status.',
+      fr: 'Colis attendus, en transit, à retirer, livrés, et état de la boîte mail.',
+      de: 'Ankommende, unterwegs, abholbereite und zugestellte Pakete, Postfachstatus.',
+      es: 'Paquetes que llegan, en tránsito, por recoger, entregados y estado del buzón.',
+    },
+    icon: 'package',
+    settings: [carrierSelect({ required: false })],
+    action_timeout_seconds: 120,
+  },
+  {
+    key: 'packages_list',
+    label: {
+      en: 'Package tracking',
+      fr: 'Suivi des colis',
+      de: 'Sendungsverfolgung',
+      es: 'Seguimiento',
+    },
+    description: {
+      en: 'Every parcel on its way, with tracking number, pickup code and tracking link.',
+      fr: 'Chaque colis en cours, avec numéro de suivi, code de retrait et lien de suivi.',
+      de: 'Jedes Paket unterwegs, mit Sendungsnummer, Abholcode und Verfolgungslink.',
+      es: 'Cada paquete en camino, con número de seguimiento, código y enlace.',
+    },
+    icon: 'list',
+    settings: [carrierSelect({ required: false })],
+    action_timeout_seconds: 120,
+  },
+];
+
+/**
+ * @param {{ version: string, docker_image: string }} release kept from the current manifest
+ */
+export function buildManifest({ version, docker_image }) {
+  return {
+    manifest_version: 1,
+    type: 'device',
+    name: 'Mail and Packages',
+    description: {
+      en: 'Packages and mail detected in your mailbox (UPS, FedEx, USPS, Amazon…).',
+      fr: 'Colis et courrier détectés dans votre boîte mail (Colissimo, UPS, DHL, Amazon…).',
+      de: 'Pakete und Post aus Ihrem Postfach erkannt (DHL, Hermes, UPS, Amazon…).',
+      es: 'Paquetes y correo detectados en tu buzón (Correos, SEUR, UPS, Amazon…).',
+    },
+    version,
+    docker_image,
+    gladys_version: '>=5.1.0',
+    cover_image: `${RAW}/cover.png`,
+    categories: ['notifications', 'services'],
+    transports: ['cloud'],
+    config_schema: configSchema,
+    actions,
+    scene_triggers: sceneTriggers,
+    scene_actions: sceneActions,
+    widgets,
+  };
+}
