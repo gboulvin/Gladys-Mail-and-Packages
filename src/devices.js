@@ -73,6 +73,10 @@ export function buildDevices(gladys, config) {
           external_id: summary.feature(SUMMARY_FEATURE.LAST_UPDATE),
           category: DEVICE_FEATURE_CATEGORIES.TEXT,
           type: DEVICE_FEATURE_TYPES.TEXT.TEXT,
+          // Gladys stores min/max on every feature (NOT NULL columns) and
+          // answers 422 without them, text features included.
+          min: 0,
+          max: 0,
           read_only: true,
           has_feedback: false,
           keep_history: true,

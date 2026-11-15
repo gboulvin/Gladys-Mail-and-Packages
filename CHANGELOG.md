@@ -10,6 +10,11 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+### Fixed
+
+- Gladys refused the devices with an HTTP 422 error: the "Last update" text
+  feature of the summary device had no min and max values.
+
 ## [1.0.1] - 2026-11-14
 
 ### Added

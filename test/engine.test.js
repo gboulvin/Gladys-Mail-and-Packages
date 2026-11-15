@@ -40,6 +40,20 @@ test('the devices pass the host API checks', async () => {
   assert.ok(names.includes('Packages – UPS'));
 });
 
+test('every feature declares a numeric min and max', () => {
+  // Gladys refuses a device whose feature has no min or max (HTTP 422, NOT
+  // NULL columns); the SDK's fake Gladys does not check it.
+  const gladys = createFakeGladys();
+  const devices = buildDevices(gladys, config({ custom_senders: 'shop.example.com' }));
+  for (const device of devices) {
+    for (const feature of device.features) {
+      assert.equal(typeof feature.min, 'number', `${feature.external_id}: min`);
+      assert.equal(typeof feature.max, 'number', `${feature.external_id}: max`);
+      assert.ok(feature.min <= feature.max, `${feature.external_id}: min <= max`);
+    }
+  }
+});
+
 test('device names follow the configured language', () => {
   const gladys = createFakeGladys();
   const [summary, first] = buildDevices(
