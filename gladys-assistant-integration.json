@@ -8,8 +8,8 @@
     "de": "Pakete und Post aus Ihrem Postfach erkannt (DHL, Hermes, UPS, Amazon…).",
     "es": "Paquetes y correo detectados en tu buzón (Correos, SEUR, UPS, Amazon…)."
   },
-  "version": "1.0.1",
-  "docker_image": "ghcr.io/gboulvin/gladys-mail-and-packages:1.0.1",
+  "version": "1.0.2",
+  "docker_image": "ghcr.io/gboulvin/gladys-mail-and-packages:1.0.2",
   "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/gboulvin/Gladys-Mail-and-Packages/main/cover.png",
   "categories": ["notifications", "services"],

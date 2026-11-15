@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-15
+
 ### Fixed
 
 - Gladys refused the devices with an HTTP 422 error: the "Last update" text
@@ -42,5 +44,6 @@ the notes of the version's GitHub Release.
 - "Test the connection" and "Scan the mailbox now" buttons.
 - English, French, German and Spanish texts and documentation.
 
-[Unreleased]: https://github.com/gboulvin/Gladys-Mail-and-Packages/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/gboulvin/Gladys-Mail-and-Packages/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/gboulvin/Gladys-Mail-and-Packages/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/gboulvin/Gladys-Mail-and-Packages/releases/tag/v1.0.1
